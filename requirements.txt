@@ -1,0 +1,11 @@
+# Python 依赖（仅 OCR/实盘登录验证码需要）
+#
+# ddddocr: 验证码识别（由 src/trader/captcha/worker.py 进程内按需调用，无 HTTP 服务）
+# pillow:  worker.py 的 selftest（画一张验证码自测）需要
+#
+# 安装：hotwave init（自动在 ~/.hotwave/venv 建环境并装依赖）
+ddddocr>=1.5.6
+pillow>=10.0.0
+# ddddocr 依赖 opencv-python；opencv-python >= 4.13 不再为 Intel macOS 提供 wheel，
+# pip 会退化成源码编译（十几分钟/易失败）。锁一个各平台都有预编译 wheel 的区间。
+opencv-python>=4.8,<4.13

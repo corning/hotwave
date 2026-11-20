@@ -1,0 +1,45 @@
+/**
+ * 东方财富交易配置
+ */
+
+export interface EastMoneyConfig {
+    domain: string;
+    assets: string;
+    submit: string;
+    revoke: string;
+    get_stock_list: string;
+    get_orders_data: string;
+    get_deal_data: string;
+    authentication: string;
+    yzm: string;
+    prefix: string;
+    authentication_check: string;
+    get_his_deal_data: string;
+    get_his_orders_data: string;
+    get_can_buy_new_stock_list_v3: string;
+    get_convertible_bond_list_v2: string;
+    submit_bat_trade_v2: string;
+    cancel_stock: string;
+    get_stock_today_info: string;
+}
+
+export const eastMoneyConfig: EastMoneyConfig = {
+    domain: "https://jywg.18.cn",
+    assets: "https://jywg.18.cn/Com/queryAssetAndPositionV1?validatekey=%s",
+    submit: "https://jywg.18.cn/Trade/SubmitTradeV2?validatekey=%s",
+    revoke: "https://jywg.18.cn/Trade/RevokeOrders?validatekey=%s",
+    get_stock_list: "https://jywg.18.cn/Search/GetStockList?validatekey=%s",
+    get_orders_data: "https://jywg.18.cn/Search/GetOrdersData?validatekey=%s",
+    get_deal_data: "https://jywg.18.cn/Search/GetDealData?validatekey=%s",
+    authentication: "https://jywg.18.cn/Login/Authentication?validatekey=",
+    yzm: "https://jywg.18.cn/Login/YZM?randNum=",
+    prefix: "",
+    authentication_check: "https://jywg.18.cn/Trade/Buy",
+    get_his_deal_data: "https://jywg.18.cn/Search/GetHisDealData?validatekey=%s",
+    get_his_orders_data: "https://jywg.18.cn/Search/GetHisOrdersData?validatekey=%s",
+    get_can_buy_new_stock_list_v3: "https://jywg.18.cn/Trade/GetCanBuyNewStockListV3?validatekey=%s",
+    get_convertible_bond_list_v2: "https://jywg.18.cn/Trade/GetConvertibleBondListV2?validatekey=%s",
+    submit_bat_trade_v2: "https://jywg.18.cn/Trade/SubmitBatTradeV2?validatekey=%s",
+    cancel_stock: "https://jywg.18.cn/Trade/cancelStockWEB?validatekey=%s",
+    get_stock_today_info: "https://jywg.18.cn/Trade/GetKyzjAndKmlV2?validatekey=%s",
+};

@@ -1,0 +1,76 @@
+{
+  "name": "hotwave",
+  "version": "0.1.0",
+  "description": "面向 A 股市场的金融 AI Agent 终端",
+  "keywords": [
+    "hotwave",
+    "agent",
+    "llm",
+    "ai-agent"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/corning/hotwave",
+  "bugs": {
+    "url": "https://github.com/corning/hotwave/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/corning/hotwave.git"
+  },
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/**",
+    "src/**",
+    "workspace-templates/**",
+    "skills/**",
+    "requirements.txt",
+    ".env.example",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./dist/src/index.js"
+  },
+  "bin": {
+    "hotwave": "dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "pnpm build && rm -rf src/trader/captcha/__pycache__",
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs start",
+    "channel:start": "tsx src/channels/channel-cli.ts",
+    "channels:all": "tsx src/channels/start-all.ts",
+    "test:integration": "tsx src/dev/selftest.ts"
+  },
+  "dependencies": {
+    "@deepseek-ai/cordis": "^4.1.0",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "^3.19.0",
+    "@larksuiteoapi/node-sdk": "^1.59.0",
+    "@mariozechner/pi-ai": "^0.55.1",
+    "axios": "^1.13.6",
+    "axios-cookiejar-support": "^6.0.5",
+    "dingtalk-stream": "2.1.6-beta.1",
+    "dotenv": "^17.3.1",
+    "fflate": "^0.8.3",
+    "grammy": "^1.41.1",
+    "tough-cookie": "^6.0.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@10.23.0"
+}
