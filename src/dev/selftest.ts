@@ -6,9 +6,9 @@
  *   B 运行时 HTTP（health / state / approvals / monitor / abort）
  *   C 工具（9 金融 + 6 交易只读 + 6 命令文件）
  *   D 网关 RPC（connect / agent.state / monitor.status / sessions.list / health）
- *   E server_app（登录 / 控制面 / 审批）
+ *   E hotwave_server（登录 / 控制面 / 审批）
  *   F 模型闭环（真实一次 chat/send，验证工具调用 + final）
- *   G 内置监控引擎（清单/告警进程内、行情走 server_app）
+ *   G 内置监控引擎（清单/告警进程内、行情走 hotwave_server）
  *
  * 运行：cd hotwave && npx tsx src/dev/selftest.ts
  */
@@ -219,25 +219,25 @@ async function testGateway() {
   process.exitCode = 0;
 }
 
-// ---------------- E server_app ----------------
-async function testServerApp() {
+// ---------------- E hotwave_server ----------------
+async function testHotwaveServer() {
   const login: any = await getJson(SERVER + '/api/auth/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone: '13800138000', password: '123123' }),
   });
-  rec('server_app 登录', !!login?.token);
+  rec('hotwave_server 登录', !!login?.token);
   const auth = { Authorization: 'Bearer ' + login.token };
 
   const st: any = await getJson(SERVER + '/api/agent/state', { headers: auth });
-  rec('server_app /api/agent/state', st?.ok === true, st?.payload?.status);
+  rec('hotwave_server /api/agent/state', st?.ok === true, st?.payload?.status);
 
   const ap: any = await getJson(SERVER + '/api/approvals', { headers: auth });
-  rec('server_app /api/approvals', ap?.ok === true);
+  rec('hotwave_server /api/approvals', ap?.ok === true);
 
   const ab: any = await getJson(SERVER + '/api/chat/abort', {
     method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: '{}',
   });
-  rec('server_app /api/chat/abort', ab?.ok === true);
+  rec('hotwave_server /api/chat/abort', ab?.ok === true);
 
   // F 模型闭环（真实一次）
   const res = await fetch(SERVER + '/api/chat/send', {
@@ -297,7 +297,7 @@ async function testOcr() {
 
 // ---------------- G 内置监控引擎 ----------------
 async function testMonitorEngine() {
-  // 引擎随网关启动：清单/告警走 MonitorManager，行情走 server_app（失败回落腾讯）
+  // 引擎随网关启动：清单/告警走 MonitorManager，行情走 hotwave_server（失败回落腾讯）
   const st: any = await getJson(RUNTIME + '/monitor/status');
   const eng: any = st.engine ?? {};
   rec('内置监控引擎运行', eng.enabled === true && eng.intervalMs >= 1000,
@@ -314,7 +314,7 @@ async function main() {
   console.log('=== B 运行时 HTTP ==='); await testRuntimeHttp();
   console.log('=== C 工具 ===');      await testTools();
   console.log('=== D 网关 ===');      await testGateway();
-  console.log('=== E/F server_app ==='); await testServerApp();
+  console.log('=== E/F hotwave_server ==='); await testHotwaveServer();
   console.log('=== G 监控引擎 ==='); await testMonitorEngine();
   console.log('=== H OCR ===');      await testOcr();
 

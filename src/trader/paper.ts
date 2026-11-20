@@ -10,7 +10,7 @@
 
 import { Balance, Position, Entrust, Deal, PerTrade } from './model.js';
 import type { ITrader, TradeResult } from './it.js';
-import { fetchServerOne } from '../tools/server-app-data.js';
+import { fetchServerOne } from '../tools/hotwave-server-data.js';
 
 interface PaperPosition {
   stockCode: string;
@@ -138,7 +138,7 @@ export class PaperTrader implements ITrader {
     return false;
   }
 
-  /** 取实时最新价（server_app 行情端点 /api/hotwave/quote，缓存 + 编码已处理） */
+  /** 取实时最新价（hotwave_server 行情端点 /api/hotwave/quote，缓存 + 编码已处理） */
   async getQuotePrice(stockCode: string): Promise<number> {
     try {
       const code = this.normalizeCode(stockCode);
@@ -156,7 +156,7 @@ export class PaperTrader implements ITrader {
     try {
       const code = this.normalizeCode(stockCode);
       const { ok, data } = await fetchServerOne('quote', { symbol: code });
-      // server_app 已按正确编码解码名称，避免中文股票名乱码落库
+      // hotwave_server 已按正确编码解码名称，避免中文股票名乱码落库
       return ok && data?.name ? String(data.name) : stockCode;
     } catch {
       return stockCode;

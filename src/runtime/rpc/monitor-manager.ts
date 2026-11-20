@@ -32,7 +32,7 @@ export class MonitorManager {
   private startedAt = Date.now();
   private _running = false;
   private _tradingSession = "idle";
-  // public：允许 server-app-client 包装（alert/statusChange 同时上行 server_app）
+  // public：允许 hotwave-server-client 包装（alert/statusChange 同时上行 hotwave_server）
   onAlert?: AlertCallback;
   onStatusChange?: StatusChangeCallback;
 

@@ -1,6 +1,6 @@
-# HotWave 热浪
+# HotWave 热浪金融 Agent
 
-> 面向 A 股市场的金融 AI Agent 终端：对话式投研、行情工具、模拟/实盘交易、实时监控与定时决策，全部运行在一个 Node.js 进程里。
+> 面向 A 股市场的金融 AI Agent 终端：对话式投研、行情工具、模拟/实盘交易、实时监控与定时决策。
 
 ![Node](https://img.shields.io/badge/node-%3E%3D22-339933)
 ![TypeScript](https://img.shields.io/badge/TypeScript-ESM-3178c6)
@@ -31,7 +31,7 @@
 
 ## 1. 项目简介
 
-HotWave（热浪）是一个开源的金融 Agent 运行时，面向 A 股市场。它把大模型、工具调用、行情数据、交易通道、风控、监控和定时任务装进同一个进程，对外提供 HTTP/SSE 与 WebSocket RPC 两种接入方式。
+HotWave（热浪金融）是一个开源的金融 Agent 运行时，面向 A 股市场。它把大模型、工具调用、行情数据、交易通道、风控、监控和定时任务装进同一个进程，对外提供 HTTP/SSE 与 WebSocket RPC 两种接入方式。
 
 它解决三件事：
 
@@ -76,19 +76,18 @@ HotWave（热浪）是一个开源的金融 Agent 运行时，面向 A 股市场
 
 ## 3. 与平台组件的关系
 
-HotWave 可以独立运行，也可以作为“热力追踪”平台体系中的客户端 Agent 接入平台。
+HotWave 可以独立运行，也可以作为“热浪金融”平台体系中的客户端 Agent 接入平台。
 
 | 组件 | 角色 | 是否在本仓库 |
 |------|------|--------------|
 | **hotwave** | 客户端 Agent 运行时，本仓库 | 是 |
-| server_app | 平台服务：行情聚合、交易落库、APP 桥接、管理 API | 否，可选 |
-| admin | 平台管理后台 | 否，可选 |
-| flutter_user_app | 用户 APP | 否，可选 |
+| hotwave_server | 平台服务：行情聚合、交易落库、APP 桥接 | 否，可选 |
+| hotwave_app | 用户 APP | 否，可选 |
 
 两种运行形态：
 
-- **独立模式（默认）**：不配置 TRADE_BINDING_ID / TRADE_BINDING_SECRET。交易可以照常执行，但不会落库到平台，也不会接入 APP。行情类工具仍需要一个兼容 server_app 数据契约的端点，仓库本身不包含该服务。
-- **平台绑定模式**：配置绑定凭证后，HotWave 通过反向 WebSocket 主动连接 server_app，接受平台下发的 chat、monitor、trader 调用；成交记录、执行日志、心跳简报写回平台，APP 可远程查看与控制。
+- **独立模式（默认）**：不配置 TRADE_BINDING_ID / TRADE_BINDING_SECRET。交易可以照常执行，但不会落库到平台，也不会接入 APP。行情类工具仍需要一个兼容 hotwave_server 数据契约的端点，仓库本身不包含该服务。
+- **平台绑定模式**：配置绑定凭证后，HotWave 通过反向 WebSocket 主动连接 hotwave_server，接受平台下发的 chat、monitor、trader 调用；成交记录、执行日志、心跳简报写回平台，APP 可远程查看与控制。
 
 > 平台侧组件不在本仓库中，可用性和部署方式由平台自身决定。独立部署 HotWave 时，请自备兼容的数据端点，或只使用文件/命令工具与本地模拟盘。
 
@@ -107,7 +106,7 @@ HotWave 可以独立运行，也可以作为“热力追踪”平台体系中的
   ◀────────────────▶│  控制面            │         │                                           │
                     │  WS RPC  :18789 ◀──┘         ├──▶ TradeRouter ──▶ PaperTrader / 东方财富  │
                     │                              ├──▶ MonitorEngine ──▶ 告警 / 通知            │
-  server_app :18791 │  反向长连接（HotWave 为 client）└──▶ Heartbeat ──▶ LLM 决策 ──▶ STRATEGY.md│
+  hotwave_server :18791 │  反向长连接（HotWave 为 client）└──▶ Heartbeat ──▶ LLM 决策 ──▶ STRATEGY.md│
   ◀────────────────▶│  NotificationRouter ──▶ Telegram / 飞书 / 钉钉 / 微信                    │
                     └──────────────────────────────────────────────────────────────────────────┘
 ~~~
@@ -118,7 +117,7 @@ HotWave 可以独立运行，也可以作为“热力追踪”平台体系中的
 |------|------|------|----------|
 | 8791 | 入站 HTTP | 运行时 HTTP/SSE、控制面、监控上报 | AGENT_RUNTIME_HOST / AGENT_RUNTIME_PORT |
 | 18789 | 入站 WS + HTTP | 内嵌网关 RPC，供 IM、桌面端、CLI、平台接入 | HOTWAVE_GW_HOST / HOTWAVE_GW_PORT |
-| 18791 | 出站 WS | HotWave 主动连接 server_app，仅绑定模式启用 | TRADE_API_WS_URL |
+| 18791 | 出站 WS | HotWave 主动连接 hotwave_server，仅绑定模式启用 | TRADE_API_WS_URL |
 
 端口固定不递延：任一端口被占用，进程直接启动失败，保证同一时刻只有一个实例。
 
@@ -129,7 +128,7 @@ HotWave 可以独立运行，也可以作为“热力追踪”平台体系中的
 | 内核 | [src/kernel](src/kernel) | Agent 循环、流式事件、工具契约与注册表、参数校验、SSE 编码 |
 | 运行时 | [src/runtime](src/runtime) | 组合根、服务插件、会话 Agent、模型描述、双通道状态 |
 | 网关 | [src/runtime/rpc](src/runtime/rpc) | 帧协议、WS 服务、RPC 方法、监控引擎、通知路由、反向连接 |
-| 工具 | [src/tools](src/tools) | 行情工具、交易工具、文件/命令工具、server_app 数据客户端 |
+| 工具 | [src/tools](src/tools) | 行情工具、交易工具、文件/命令工具、hotwave_server 数据客户端 |
 | 交易 | [src/trader](src/trader) | 交易路由、模拟盘、东方财富实盘、交易记录、验证码识别 |
 | 渠道 | [src/channels](src/channels) | Telegram、飞书、钉钉、微信适配器 |
 | 通用 | [src/common](src/common) | 路径解析、环境加载、单实例锁、OCR、审批类型、股票标注 |
@@ -221,7 +220,7 @@ HotWave 可以独立运行，也可以作为“热力追踪”平台体系中的
 - **pnpm >= 10**（仓库锁定 pnpm 10.23）。
 - **Python 3**（可选）。只有实盘登录验证码识别需要，由 **hotwave init** 自动创建虚拟环境。
 - **模型 API Key**。至少配置 ANTHROPIC_API_KEY 或 OPENAI_API_KEY 之一。
-- **行情数据端点**（可选但强烈建议）。行情工具默认访问 server_app 的 **/api/hotwave/** 契约；没有该端点时，行情类工具会报“数据服务不可用”。
+- **行情数据端点**（可选但强烈建议）。行情工具默认访问 hotwave_server 的 **/api/hotwave/** 契约；没有该端点时，行情类工具会报“数据服务不可用”。
 - **时区**。建议设置 **TZ=Asia/Shanghai**。交易时段校验会显式换算北京时间，但心跳阶段判断和监控时段使用本机时区。
 
 ### 6.2 安装
@@ -404,7 +403,7 @@ hotwave start
 | MONITOR_INTERVAL_MS | 未设置 | 毫秒级间隔，优先级高于 MONITOR_INTERVAL |
 | MONITOR_PRICE_PCT | 3.0 | 涨跌幅异动阈值，单位 % |
 | MONITOR_VOLUME_RATIO | 2.0 | 放量倍数阈值 |
-| MONITOR_QUOTE_SOURCE | auto | auto / server_app / tencent |
+| MONITOR_QUOTE_SOURCE | auto | auto / hotwave_server / tencent |
 
 默认监控指数：上证指数 sh000001、深证成指 sz399001、创业板指 sz399006、科创50 sh000688。
 
@@ -491,7 +490,7 @@ hotwave start
 | pnpm dev | tsx 直接跑源码，开发默认使用仓库内 workspace |
 | pnpm start | 跑 dist 构建产物，使用 ~/.hotwave/workspace |
 | pnpm build | tsc 编译到 dist |
-| pnpm test:integration | 全功能自测，需要本机运行时与 server_app 同时在线 |
+| pnpm test:integration | 全功能自测，需要本机运行时与 hotwave_server 同时在线 |
 | pnpm channel:start <name> | 单独启动一个 IM 渠道 |
 | pnpm channels:all | 启动所有已配置凭证的渠道 |
 
@@ -689,7 +688,7 @@ Server                                  Client
 
 同时会广播原始 **agent** 事件，供需要细粒度事件的客户端使用。
 
-### 9.6 server_app 反向连接
+### 9.6 hotwave_server 反向连接
 
 仅在配置 **TRADE_BINDING_ID / TRADE_BINDING_SECRET** 时启用：
 
@@ -720,7 +719,7 @@ Server                                  Client
 | market_big_order | 成交额突增的大单异动 |
 | market_analysis | 指定标的的综合行情分析 |
 
-行情工具统一走 **server_app /api/hotwave/** 数据端点，不做外部直连降级。
+行情工具统一走 **hotwave_server /api/hotwave/** 数据端点，不做外部直连降级。
 
 ### 交易（10）
 
@@ -827,7 +826,7 @@ Server                                  Client
 随网关启动，无独立进程、无端口：
 
 - **清单**：来自 MonitorManager，默认 4 个指数，可通过 HTTP/RPC 或 MONITOR_INDEX_LIST 调整。
-- **行情**：优先 server_app 的 quote 接口，失败或空结果时回落腾讯 qt.gtimg.cn。
+- **行情**：优先 hotwave_server 的 quote 接口，失败或空结果时回落腾讯 qt.gtimg.cn。
 - **判定**：涨跌幅绝对值超过 MONITOR_PRICE_PCT，或本轮量达到上轮 MONITOR_VOLUME_RATIO 倍，或触及 9.8% 涨跌停阈值。
 - **告警**：同标的 60 秒冷却，广播到监控页，按通知配置推送 IM，不唤醒 LLM。
 - **时段**：按本机时间推断 pre_open / morning / lunch / afternoon / idle，切换时触发一次心跳，5 分钟内同一转换点不重复触发。
@@ -908,7 +907,7 @@ pnpm test:integration # 全功能自测
 - 监控引擎：进程内运行、取数、无 Python 瘦客户端。
 - OCR：运行时自检、自画验证码识别、实盘登录识别链路。
 
-该自测要求本机 **hotwave 运行时** 与 **server_app** 同时在线，不是纯离线单元测试。网关未启动、模型配额用尽等环境问题会按跳过处理；server_app 不可达时平台相关用例会失败。
+该自测要求本机 **hotwave 运行时** 与 **hotwave_server** 同时在线，不是纯离线单元测试。网关未启动、模型配额用尽等环境问题会按跳过处理；hotwave_server 不可达时平台相关用例会失败。
 
 ### 14.3 扩展方式
 
@@ -930,15 +929,15 @@ pnpm test:integration # 全功能自测
 | 端口被占用，进程退出 | 已有实例在跑，或端口被其他程序占用 | lsof -nP -iTCP:8791 -iTCP:18789；停旧实例或 --take-over |
 | 提示已有 hotwave 实例 | 实例锁或绑定锁生效 | 按提示停旧实例；由 launchd/systemd 托管时先停服务 |
 | 缺少 API Key | 未配置 ANTHROPIC_API_KEY 或 OPENAI_API_KEY | 写入 ~/.hotwave/.env 后重启 |
-| 行情工具报“数据服务不可用” | server_app 未启动或 TRADE_API_BASE 不对 | 启动兼容端点，或修正 TRADE_API_BASE |
-| 监控 engine.lastSource=tencent | server_app 不可用，已回落腾讯 | 检查平台服务；告警链路仍可用 |
+| 行情工具报“数据服务不可用” | hotwave_server 未启动或 TRADE_API_BASE 不对 | 启动兼容端点，或修正 TRADE_API_BASE |
+| 监控 engine.lastSource=tencent | hotwave_server 不可用，已回落腾讯 | 检查平台服务；告警链路仍可用 |
 | OCR 未就绪 | 未运行 hotwave init，或 venv 缺依赖 | hotwave init；或设置 HOTWAVE_PYTHON |
 | 心跳不触发 | 不在活跃时段、上一轮仍在跑、间隔不足 | 查看 /state 的 heartbeat 字段与日志 |
 | 心跳没有简报 | 模型无输出、绑定未配置、落库失败 | 看日志与平台 heartbeat_reports；先确认 binding |
 | 网关 connect 失败 | Token 或 nonce 不匹配 | 检查 HOTWAVE_GW_TOKEN 与客户端配置 |
 | 时间判断异常 | 进程时区不是北京时间 | 设置 TZ=Asia/Shanghai 后重启 |
 | 重启后模拟盘持仓归零 | 未配置绑定，无法从 trades 表重放 | 配置 binding，或接受内存态重置 |
-| 股票名称乱码 | 数据端点未按正确编码返回 | 使用 server_app 的 quote 接口，已处理编码 |
+| 股票名称乱码 | 数据端点未按正确编码返回 | 使用 hotwave_server 的 quote 接口，已处理编码 |
 
 诊断入口：
 
@@ -989,4 +988,4 @@ curl http://127.0.0.1:8791/monitor/status
 
 MIT License，详见 [LICENSE](LICENSE)。
 
-Copyright (c) 2026 voocel
+Copyright (c) 2026 Corning

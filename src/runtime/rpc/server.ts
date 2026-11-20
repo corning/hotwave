@@ -23,7 +23,7 @@ import {
   TICK_INTERVAL_MS, MAX_BUFFERED_BYTES, HANDSHAKE_TIMEOUT_MS,
 } from "./protocol.js";
 import { handlers, type GwClient, type BroadcastFn, type HandlerContext } from "./handlers.js";
-import { startServerAppClientIfConfigured } from "./server-app-client.js";
+import { startHotwaveServerClientIfConfigured } from "./hotwave-server-client.js";
 import { MonitorManager } from "./monitor-manager.js";
 import { NotificationRouter } from "./notification-router.js";
 import { currentTradingSession } from "./trading-session.js";
@@ -232,9 +232,9 @@ export async function startGatewayServer(opts: GatewayServerOptions): Promise<Ga
     notificationRouter,
   };
 
-  // 启动 server-app-client：若配 TRADE_BINDING_ID/SECRET，hotwave 主动连 server_app
-  // 建立长连接（反向调用模式），server_app 通过该连接下发 RPC。未配置则跳过（独立隐私模式）。
-  // 内置监控引擎：清单/告警直接走 MonitorManager，行情走 server_app（失败回落腾讯），
+  // 启动 hotwave-server-client：若配 TRADE_BINDING_ID/SECRET，hotwave 主动连 hotwave_server
+  // 建立长连接（反向调用模式），hotwave_server 通过该连接下发 RPC。未配置则跳过（独立隐私模式）。
+  // 内置监控引擎：清单/告警直接走 MonitorManager，行情走 hotwave_server（失败回落腾讯），
   // 不再需要单独运行的 Python 瘦客户端进程。
   const engineClient = { id: "monitor-engine", socket: null as unknown as GwClient["socket"], authed: true };
   const monitorEngine = startMonitorEngine({
@@ -255,8 +255,8 @@ export async function startGatewayServer(opts: GatewayServerOptions): Promise<Ga
   });
   monitorManager.setRunning(monitorEngine.status().enabled);
 
-  startServerAppClientIfConfigured(ctx).catch((e) => {
-    console.warn("[Gateway] server-app-client 启动失败:", (e as Error).message);
+  startHotwaveServerClientIfConfigured(ctx).catch((e) => {
+    console.warn("[Gateway] hotwave-server-client 启动失败:", (e as Error).message);
   });
 
   // HTTP 服务
@@ -366,7 +366,7 @@ export async function startGatewayServer(opts: GatewayServerOptions): Promise<Ga
       activeHours,
     });
 
-    // 永久订阅 agent 事件：heartbeat 简报路由到 IM 渠道 + 直写 server_app heartbeat_reports 表。
+    // 永久订阅 agent 事件：heartbeat 简报路由到 IM 渠道 + 直写 hotwave_server heartbeat_reports 表。
     // 简报已彻底移出 chat 体系：不再 broadcast("chat", _heartbeat_)，避免串扰/截断用户聊天流。
     unsubHeartbeat = agent.subscribe((event: any) => {
       if ("sessionKey" in event && isHeartbeatSessionKey(event.sessionKey as string)) {

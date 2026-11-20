@@ -19,7 +19,7 @@ import { createNotifierPlugin } from './plugins/channels.js';
 import { createChannelRuntimePlugin } from './plugins/channels-runtime.js';
 import { createDshCompatPlugin } from './plugins/dsh-compat.js';
 
-import { fetchServerOne } from '../tools/server-app-data.js';
+import { fetchServerOne } from '../tools/hotwave-server-data.js';
 import { MemoryManager } from '../capabilities/memory.js';
 import { financeTools } from '../tools/finance.js';
 import { traderTools } from '../tools/trader.js';

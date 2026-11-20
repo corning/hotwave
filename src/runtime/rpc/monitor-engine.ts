@@ -3,15 +3,15 @@
  *
  * 数据通路（全部进程内，零端口、零额外进程）：
  *   监控清单 ← MonitorManager.getItems()           （不再 GET /monitor/status）
- *   行情    ← server_app /api/hotwave/quote        （与 9 个 finance 工具同源，见 tools/server-app-data.ts）
- *             └ server_app 不可用时回落腾讯 qt.gtimg.cn（告警链路不因后端重启而中断）
+ *   行情    ← hotwave_server /api/hotwave/quote        （与 9 个 finance 工具同源，见 tools/hotwave-server-data.ts）
+ *             └ hotwave_server 不可用时回落腾讯 qt.gtimg.cn（告警链路不因后端重启而中断）
  *   告警    → MonitorManager.raiseAlert()          （冷却/去重/广播/IM 路由同一条链路，不再 POST /monitor/ingest）
  *   时段    → 复用 monitor.instruct handler        （IM 通知 + 关键时点触发心跳，与旧客户端语义一致）
  *
  * 随网关启动，随 gw.close() 停止；状态经 /monitor/status 的 engine 字段暴露。
  */
 
-import { fetchServerOne } from '../../tools/server-app-data.js';
+import { fetchServerOne } from '../../tools/hotwave-server-data.js';
 import type { MonitorAlert, MonitorItem } from './protocol.js';
 import { currentTradingSession } from './trading-session.js';
 
@@ -20,11 +20,11 @@ export type Quote = {
   name?: string;
   price: number;
   changePct: number;
-  /** 成交量（手），与腾讯 parts[6] / server_app quote.volume 一致 */
+  /** 成交量（手），与腾讯 parts[6] / hotwave_server quote.volume 一致 */
   volume: number;
 };
 
-export type QuoteSource = 'server_app' | 'tencent' | 'none';
+export type QuoteSource = 'hotwave_server' | 'tencent' | 'none';
 export type QuoteResult = { quotes: Map<string, Quote>; source: QuoteSource };
 
 export type MonitorEngineStatus = {
@@ -89,8 +89,8 @@ function pickQuote(quotes: Map<string, Quote>, symbol: string): Quote | undefine
 
 // ---------------- 行情源 ----------------
 
-/** 主数据源：server_app /api/hotwave/quote（POST，内部有 3s 行情缓存） */
-async function quotesFromServerApp(symbols: string[]): Promise<Map<string, Quote>> {
+/** 主数据源：hotwave_server /api/hotwave/quote（POST，内部有 3s 行情缓存） */
+async function quotesFromHotwaveServer(symbols: string[]): Promise<Map<string, Quote>> {
   const out = new Map<string, Quote>();
   const results = await Promise.allSettled(symbols.map((symbol) => fetchServerOne('quote', { symbol })));
   results.forEach((r, i) => {
@@ -112,7 +112,7 @@ async function quotesFromServerApp(symbols: string[]): Promise<Map<string, Quote
   return out;
 }
 
-/** 兜底数据源：腾讯行情（GBK），server_app 不在时仍能告警 */
+/** 兜底数据源：腾讯行情（GBK），hotwave_server 不在时仍能告警 */
 async function quotesFromTencent(symbols: string[]): Promise<Map<string, Quote>> {
   const out = new Map<string, Quote>();
   if (!symbols.length) return out;
@@ -151,8 +151,8 @@ async function quotesFromTencent(symbols: string[]): Promise<Map<string, Quote>>
 }
 
 /**
- * 取行情：MONITOR_QUOTE_SOURCE=auto（默认）→ 先 server_app，失败/空结果再回落腾讯；
- * =server_app 只用后端；=tencent 直连腾讯（后端维护时可临时用）。
+ * 取行情：MONITOR_QUOTE_SOURCE=auto（默认）→ 先 hotwave_server，失败/空结果再回落腾讯；
+ * =hotwave_server 只用后端；=tencent 直连腾讯（后端维护时可临时用）。
  */
 export async function fetchQuotes(symbols: string[]): Promise<QuoteResult> {
   if (!symbols.length) return { quotes: new Map(), source: 'none' };
@@ -161,12 +161,12 @@ export async function fetchQuotes(symbols: string[]): Promise<QuoteResult> {
     return { quotes: await quotesFromTencent(symbols), source: 'tencent' };
   }
   try {
-    const quotes = await quotesFromServerApp(symbols);
-    if (quotes.size > 0) return { quotes, source: 'server_app' };
+    const quotes = await quotesFromHotwaveServer(symbols);
+    if (quotes.size > 0) return { quotes, source: 'hotwave_server' };
   } catch {
     /* 回落腾讯 */
   }
-  if (mode === 'server_app') return { quotes: new Map(), source: 'none' };
+  if (mode === 'hotwave_server') return { quotes: new Map(), source: 'none' };
   return { quotes: await quotesFromTencent(symbols), source: 'tencent' };
 }
 

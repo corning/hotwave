@@ -6,9 +6,9 @@
  * 2. 中断（abort）：由 handlers.ts 的 chat.abort 直接调 agent.abort(runId)，本模块不管。
  * 3. 状态（state）：approvals.list / 待审批数量，供 APP 展示。
  *
- * 事件上行：通过 setEventSink 注入 server-app-client 的 sendEvent，
- * 使 approval.request / approval.resolved 能经 WS 上行到 server_app，再由 SSE 推给手机。
- * 未配置 server-app-client（独立隐私模式）时 sink 为空，审批仍可在本地 CLI 完成。
+ * 事件上行：通过 setEventSink 注入 hotwave-server-client 的 sendEvent，
+ * 使 approval.request / approval.resolved 能经 WS 上行到 hotwave_server，再由 SSE 推给手机。
+ * 未配置 hotwave-server-client（独立隐私模式）时 sink 为空，审批仍可在本地 CLI 完成。
  */
 
 import type { ApprovalDecision, ApprovalRequest } from "../../common/tool-approval.js";
@@ -40,7 +40,7 @@ export class ApprovalBridge {
   private pending = new Map<string, PendingApproval>();
   private sink?: (event: string, payload: unknown) => void;
 
-  /** 注入上行事件通道（server-app-client 连接成功后调用；断开时传 undefined） */
+  /** 注入上行事件通道（hotwave-server-client 连接成功后调用；断开时传 undefined） */
   setEventSink(fn?: (event: string, payload: unknown) => void): void {
     this.sink = fn;
   }
@@ -107,5 +107,5 @@ export class ApprovalBridge {
   }
 }
 
-/** 全局单例：gateway handlers 与 server-app-client 共享 */
+/** 全局单例：gateway handlers 与 hotwave-server-client 共享 */
 export const approvalBridge = new ApprovalBridge();

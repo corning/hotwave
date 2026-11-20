@@ -1,14 +1,14 @@
 /**
  * 单实例守卫（hotwave 运行时不允许多开）
  *
- * 背景：多个 hotwave 实例共用同一个 TRADE_BINDING_ID 时，server_app 每个 binding 只保留
+ * 背景：多个 hotwave 实例共用同一个 TRADE_BINDING_ID 时，hotwave_server 每个 binding 只保留
  * 最新一条反连长连接（新连接 4002 顶掉旧的），两个实例会互相顶替、无限重连，
  * 审批 / 告警 / 交易回执会在两边乱跳 —— 属于不可控状态。
  *
  * 因此运行时启动时获取两把锁：
  *   1) 实例锁  <HOTWAVE_HOME>/runtime.lock           —— 同一数据目录只允许一个运行时
  *   2) 绑定锁  <tmpdir>/hotwave-binding-<id>.lock     —— 同一 TRADE_BINDING_ID 只允许一个运行时
- *      （防 HOTWAVE_HOME / 端口各自不同、却连同一个 server_app 绑定的多开）
+ *      （防 HOTWAVE_HOME / 端口各自不同、却连同一个 hotwave_server 绑定的多开）
  *
  * 已存在活实例时的处理：
  *   - 默认：打印对方 pid/端口/工作区 + 停止方式，退出码 1（不会自行接管）
@@ -35,7 +35,7 @@ export type LockInfo = {
 
 export type LockHandle = { file: string; info: LockInfo };
 
-const LAUNCHD_LABEL = 'com.hotpursuit.runtime';
+const LAUNCHD_LABEL = 'com.hotwave.runtime';
 const TAKE_OVER_WAIT_MS = 5_000;
 
 function instanceLockFile(): string {

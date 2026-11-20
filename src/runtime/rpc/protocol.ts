@@ -121,7 +121,7 @@ export type MonitorItem = {
   id: string;
   type: "stock" | "index" | "flow" | "linked";
   symbol: string;
-  /** 股票名称（server_app 全市场列表提供），可选（老 item 可能无此字段） */
+  /** 股票名称（hotwave_server 全市场列表提供），可选（老 item 可能无此字段） */
   name?: string;
   interval: number;
   thresholds?: AlertRule[];

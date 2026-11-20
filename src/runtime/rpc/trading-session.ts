@@ -4,7 +4,7 @@
  * 用途：MonitorManager 启动时的初始时段。若初值固定为 "idle"，盘中重启运行时会
  * 让监控瘦客户端误判为"时段已切换到 idle"（既误报时段，又误触发一次心跳 LLM）。
  *
- * 取值与瘦客户端 / server_app 约定一致：
+ * 取值与瘦客户端 / hotwave_server 约定一致：
  *   pre_open | morning | lunch | afternoon | idle
  */
 export type TradingSession = 'pre_open' | 'morning' | 'lunch' | 'afternoon' | 'idle';

@@ -44,14 +44,14 @@ export function createNotifierPlugin() {
   };
 }
 
-/** server_app 桥接插件：反向长连接（B4 骨架，默认不连，避免与运行中的实例冲突） */
+/** hotwave_server 桥接插件：反向长连接（B4 骨架，默认不连，避免与运行中的实例冲突） */
 export function createServerBridgePlugin() {
   return {
     name: 'server-bridge',
     inject: [],
     async apply(ctx: any, config: any = {}) {
       const enabled = config.enabled === true;
-      ctx.logger?.info?.('[server-bridge] %s', enabled ? '待接入（复用 server-app-client）' : 'disabled');
+      ctx.logger?.info?.('[server-bridge] %s', enabled ? '待接入（复用 hotwave-server-client）' : 'disabled');
     },
   };
 }

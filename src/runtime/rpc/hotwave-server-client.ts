@@ -1,19 +1,19 @@
 /**
- * hotwave -> server_app 长连接客户端（反向调用模式）
+ * hotwave -> hotwave_server 长连接客户端（反向调用模式）
  *
- * hotwave 用 TRADE_BINDING_ID/SECRET 主动连 server_app WS server（:18791），建立长连接。
- * server_app 通过该连接反向下发 RPC（chat.send、monitor.*、trader.balance），本 client 收 req
+ * hotwave 用 TRADE_BINDING_ID/SECRET 主动连 hotwave_server WS server（:18791），建立长连接。
+ * hotwave_server 通过该连接反向下发 RPC（chat.send、monitor.*、trader.balance），本 client 收 req
  * -> dispatch 到 handlers 注册表（复用 handlers.ts:710）-> 回 res + 流式 event。
  *
- * 替代旧 server_app 主动连 hotwave gateway 的反向依赖：方向反转--hotwave=client 主动连
- * server_app(server)，server_app 利用该连接反向调用 hotwave。
+ * 历史实现中 hotwave_server 曾主动连接 hotwave gateway；现在方向反转：
+ * hotwave=client 主动连接 hotwave_server，hotwave_server 复用该连接反向调用 hotwave。
  *
- * 认证：server_app 发 connect.challenge -> 本 client 回 connect req（bindingId/Secret/nonce）
- *       -> server_app verifyBinding -> res ok。
+ * 认证：hotwave_server 发 connect.challenge -> 本 client 回 connect req（bindingId/Secret/nonce）
+ *       -> hotwave_server verifyBinding -> res ok。
  *
  * chat.send 流式：handleChatSend 立即返回 ACK res，agent.run 异步执行，
- * 通过 ctx.broadcast("chat", delta/final/thinking) 推流式 event 到 server_app。
- * 本 client 的 serverAppCtx.broadcast 实现 = 推 event 到 server_app（ws.send）。
+ * 通过 ctx.broadcast("chat", delta/final/thinking) 推流式 event 到 hotwave_server。
+ * 本 client 的 hotwaveServerCtx.broadcast 实现 = 推 event 到 hotwave_server（ws.send）。
  */
 
 import WebSocket from "ws";
@@ -30,10 +30,10 @@ import {
 } from "./handlers.js";
 import { approvalBridge } from "./control-bridge.js";
 
-export type ServerAppClientOptions = {
-  /** server_app WS server URL，默认 ws://localhost:18791 */
+export type HotwaveServerClientOptions = {
+  /** hotwave_server WS server URL，默认 ws://localhost:18791 */
   url: string;
-  /** hotwave 绑定凭证（用户在 APP/admin 生成后配置到 .env） */
+  /** hotwave 绑定凭证（用户在 APP 生成后配置到 .env） */
   bindingId: string;
   bindingSecret: string;
   /** 复用 gateway ctx（agent/monitorManager/notificationRouter） */
@@ -49,7 +49,7 @@ const MAX_BACKOFF_MS = 30_000;
 /** 连接存活超过它才算"站得住"：只有稳定连接才复位退避，避免被顶掉时陷入 1s 重连死循环 */
 const STABLE_CONNECT_MS = 10_000;
 
-export class ServerAppClient {
+export class HotwaveServerClient {
   private ws: WebSocket | null = null;
   private closed = false;
   private backoffMs = 1000;
@@ -66,14 +66,14 @@ export class ServerAppClient {
   /** 被顶替的告警只打一次，避免刷屏 */
   private warnedReplace = false;
 
-  /** 代表 server_app 连接的 GwClient（handler 用 client.socket.send 推单 client） */
+  /** 代表 hotwave_server 连接的 GwClient（handler 用 client.socket.send 推单 client） */
   private gwClient: GwClient;
-  /** server-app-client 自己的 ctx（broadcast 推 server_app，其余复用 gateway ctx） */
-  private serverAppCtx: HandlerContext;
+  /** hotwave-server-client 自己的 ctx（broadcast 推 hotwave_server，其余复用 gateway ctx） */
+  private hotwaveServerCtx: HandlerContext;
 
-  constructor(private opts: ServerAppClientOptions) {
+  constructor(private opts: HotwaveServerClientOptions) {
     this.gwClient = {
-      id: "server-app",
+      id: "hotwave-server",
       socket: {
         send: (data: string) => {
           if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(data);
@@ -85,7 +85,7 @@ export class ServerAppClient {
       },
       authed: true,
     };
-    this.serverAppCtx = {
+    this.hotwaveServerCtx = {
       ...opts.ctx,
       broadcast: (event, payload) => this.sendEvent(event, payload),
       clients: new Set([this.gwClient]),
@@ -94,7 +94,7 @@ export class ServerAppClient {
     };
 
     // 包装 monitorManager 回调：alert/statusChange 既走主 ctx.broadcast（IM channels/CLI），
-    // 又定向上行 server_app（monitor.alert/monitor.status_change event）。
+    // 又定向上行 hotwave_server（monitor.alert/monitor.status_change event）。
     // 不把 gwClient 加入主 ctx.clients，避免 chat/monitor.status_change 重复推送。
     const mm = opts.ctx.monitorManager;
     if (mm) {
@@ -118,9 +118,9 @@ export class ServerAppClient {
     }
   }
 
-  /** 上行 event 到 server_app（chat delta/monitor.alert 等） */
+  /** 上行 event 到 hotwave_server（chat delta/monitor.alert 等） */
   private sendEvent(event: string, payload: unknown) {
-    if (event !== 'tick') console.log('[ServerAppClient] 上行事件:', event);
+    if (event !== 'tick') console.log('[HotwaveServerClient] 上行事件:', event);
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(
         JSON.stringify({ type: "event", event, payload, seq: ++this.seq })
@@ -139,7 +139,7 @@ export class ServerAppClient {
     }
   }
 
-  /** 主动连 server_app + binding 认证 */
+  /** 主动连 hotwave_server + binding 认证 */
   async connect(): Promise<void> {
     if (this.closed) return;
     this.ws = new WebSocket(this.opts.url);
@@ -154,7 +154,7 @@ export class ServerAppClient {
       }, HANDSHAKE_TIMEOUT_MS);
 
       this.ws!.on("open", () => {
-        console.log(`[ServerAppClient] 已连 ${this.opts.url}`);
+        console.log(`[HotwaveServerClient] 已连 ${this.opts.url}`);
       });
 
       this.ws!.on("message", (raw) => {
@@ -196,8 +196,8 @@ export class ServerAppClient {
             this.warnedReplace = false;
           }
           this.connectedAt = Date.now();
-          console.log("[ServerAppClient] 认证成功，已建立长连接");
-          // 控制面：审批事件经本连接上行到 server_app（再经 SSE 推给手机）
+          console.log("[HotwaveServerClient] 认证成功，已建立长连接");
+          // 控制面：审批事件经本连接上行到 hotwave_server（再经 SSE 推给手机）
           approvalBridge.setEventSink((event, payload) => this.sendEvent(event, payload));
           this.startKeepalive();
           this.opts.onConnect?.();
@@ -205,10 +205,10 @@ export class ServerAppClient {
           return;
         }
 
-        // server_app 下发 req -> dispatch handlers（connect 除外，认证已由 server_app 端处理）
+        // hotwave_server 下发 req -> dispatch handlers（connect 除外，认证已由 hotwave_server 端处理）
         if (parsed.type === "req" && parsed.method !== "connect") {
           this.dispatchReq(parsed as RequestFrame).catch((err) => {
-            console.error("[ServerAppClient] dispatchReq 异常:", err);
+            console.error("[HotwaveServerClient] dispatchReq 异常:", err);
           });
         }
       });
@@ -221,8 +221,8 @@ export class ServerAppClient {
           reject(new Error(`handshake closed: ${code}`));
           return;
         }
-        console.log(`[ServerAppClient] 连接关闭: ${code} ${reason || ""}`);
-        // 4002 replaced：server_app 同一个 binding 只保留最新一条连接。若本机有两个 hotwave 实例
+        console.log(`[HotwaveServerClient] 连接关闭: ${code} ${reason || ""}`);
+        // 4002 replaced：hotwave_server 同一个 binding 只保留最新一条连接。若本机有两个 hotwave 实例
         // （如 launchd 常驻 + pnpm dev）共用 TRADE_BINDING_ID，就会互相顶替、无限重连。
         if (code === 4002) this.noteReplaced();
         // 断开时撤销审批事件通道，避免向空连接 sendEvent
@@ -239,14 +239,14 @@ export class ServerAppClient {
       });
     }).catch((err) => {
       if (!this.closed) {
-        console.warn(`[ServerAppClient] 连接失败: ${err.message}`);
+        console.warn(`[HotwaveServerClient] 连接失败: ${err.message}`);
         this.scheduleReconnect();
       }
       throw err;
     });
   }
 
-  /** 收 server_app req -> 查 handlers 注册表 -> 调用 -> 回 res */
+  /** 收 hotwave_server req -> 查 handlers 注册表 -> 调用 -> 回 res */
   private async dispatchReq(req: RequestFrame) {
     const handler = handlers[req.method];
     if (!handler) {
@@ -259,7 +259,7 @@ export class ServerAppClient {
       return;
     }
     try {
-      const result = await handler(req.params, this.gwClient, this.serverAppCtx);
+      const result = await handler(req.params, this.gwClient, this.hotwaveServerCtx);
       this.respond(req.id, result.ok, result.payload, result.error);
     } catch (err) {
       this.respond(
@@ -277,7 +277,7 @@ export class ServerAppClient {
     this.lastEventMs = Date.now();
     this.keepaliveTimer = setInterval(() => {
       if (Date.now() - this.lastEventMs > KEEPALIVE_TIMEOUT_MS) {
-        console.warn("[ServerAppClient] 90s 无消息，主动断开触发重连");
+        console.warn("[HotwaveServerClient] 90s 无消息，主动断开触发重连");
         this.ws?.close(4001, "keepalive timeout");
       }
     }, KEEPALIVE_INTERVAL_MS);
@@ -296,10 +296,10 @@ export class ServerAppClient {
     if (!this.warnedReplace && this.replacedStreak >= 2) {
       this.warnedReplace = true;
       console.warn(
-        "[ServerAppClient] 连接被新连接顶替（4002 replaced by new connection）：同一个 binding（TRADE_BINDING_ID）" +
+        "[HotwaveServerClient] 连接被新连接顶替（4002 replaced by new connection）：同一个 binding（TRADE_BINDING_ID）" +
           "还有另一个 hotwave 进程在跑。运行时已强制单实例（src/common/instance-lock.ts），" +
           "出现本条多半是旧版本/绕过锁的进程：用 lsof -nP -iTCP:8791 -sTCP:LISTEN 找到并停掉它，" +
-          "或重启 launchd 常驻（launchctl kickstart -k gui/$(id -u)/com.hotpursuit.runtime）。",
+          "或重启 launchd 常驻（launchctl kickstart -k gui/$(id -u)/com.hotwave.runtime）。",
       );
     }
   }
@@ -310,7 +310,7 @@ export class ServerAppClient {
     if (this.reconnectTimer) return;
     const delay = this.backoffMs + Math.floor(Math.random() * 500);
     this.backoffMs = Math.min(this.backoffMs * 2, MAX_BACKOFF_MS);
-    console.log(`[ServerAppClient] ${delay}ms 后重连`);
+    console.log(`[HotwaveServerClient] ${delay}ms 后重连`);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect().catch(() => {
@@ -332,22 +332,22 @@ export class ServerAppClient {
 }
 
 /**
- * 若配 TRADE_BINDING_ID/SECRET，启动 server-app-client 连 server_app。
+ * 若配 TRADE_BINDING_ID/SECRET，启动 hotwave-server-client 连 hotwave_server。
  * 在 gateway server ctx 就绪后调用。未配置则跳过（独立隐私模式）。
  */
-export async function startServerAppClientIfConfigured(
+export async function startHotwaveServerClientIfConfigured(
   ctx: HandlerContext
-): Promise<ServerAppClient | null> {
+): Promise<HotwaveServerClient | null> {
   const bindingId = process.env.TRADE_BINDING_ID || "";
   const bindingSecret = process.env.TRADE_BINDING_SECRET || "";
   if (!bindingId || !bindingSecret) {
-    console.log("[ServerAppClient] TRADE_BINDING_ID/SECRET 未配置，跳过（独立隐私模式）");
+    console.log("[HotwaveServerClient] TRADE_BINDING_ID/SECRET 未配置，跳过（独立隐私模式）");
     return null;
   }
   const url = process.env.TRADE_API_WS_URL || "ws://localhost:18791";
-  const client = new ServerAppClient({ url, bindingId, bindingSecret, ctx });
+  const client = new HotwaveServerClient({ url, bindingId, bindingSecret, ctx });
   client.connect().catch((e) => {
-    console.warn("[ServerAppClient] 启动连接失败:", (e as Error).message);
+    console.warn("[HotwaveServerClient] 启动连接失败:", (e as Error).message);
   });
   return client;
 }

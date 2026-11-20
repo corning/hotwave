@@ -1,7 +1,7 @@
 /**
  * AgentEvent → SSE 帧（对齐 Flutter 端现有契约）
  *
- * Flutter 期望的事件与字段（flutter_user_app/lib/src/services/chat_service.dart）：
+ * Flutter 期望的事件与字段（hotwave_app/lib/src/services/chat_service.dart）：
  *   delta          { content }
  *   final          { content }
  *   done           { messageId }

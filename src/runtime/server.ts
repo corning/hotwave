@@ -2,9 +2,9 @@
  * Agent 运行时（单进程）
  *
  * 一个进程承担全部职责（旧 gateway-entry 已删除，不再有第二个进程）：
- *   - HTTP   :8791    chat/SSE、控制面、监控上报（本机 server_app 调）
+ *   - HTTP   :8791    chat/SSE、控制面、监控上报（本机 hotwave_server 调）
  *   - 内嵌网关 :18789  WS RPC（IM 渠道 / 桌面端 / CLI）
- *   - 反连长连接 :18791 -> server_app（server_app 反向调用 trader/monitor/approval）
+ *   - 反连长连接 :18791 -> hotwave_server（hotwave_server 反向调用 trader/monitor/approval）
  *   - 心跳定时唤醒、监控告警、通知路由（NotificationRouter）
  *
  * 单进程的关键收益：交易/监控/审批只有一份实例（TradeRouter、EastMoneyTrader、
@@ -78,7 +78,7 @@ async function main() {
   console.log('[runtime] home=' + hotwavePaths().home + ' workspace=' + WORKSPACE);
 
   // 单实例守卫：同一 HOTWAVE_HOME / 同一 TRADE_BINDING_ID 只允许一个运行时。
-  // 多开会共用同一 binding 反连 server_app（每个 binding 只留最新连接），互相 4002 顶掉、
+  // 多开会共用同一 binding 反连 hotwave_server（每个 binding 只留最新连接），互相 4002 顶掉、
   // 审批/告警/交易回执在两边乱跳；这里直接拒绝启动，而不是"带病运行"。
   // 接管旧实例：只认命令行 --take-over（不再从 .env / 环境变量读开关）
   const TAKE_OVER = process.argv.includes('--take-over');
@@ -353,7 +353,7 @@ async function main() {
           '[runtime] 端口 ' + HOST + ':' + PORT + ' 已被占用，本进程退出（同一时间只允许一个实例）。\n' +
             '  排查占用者：lsof -nP -iTCP:' + PORT + ' -sTCP:LISTEN\n' +
             '  若占用者是 launchd 常驻服务，先停它：\n' +
-            '    launchctl bootout gui/$(id -u)/com.hotpursuit.runtime',
+            '    launchctl bootout gui/$(id -u)/com.hotwave.runtime',
         );
         process.exit(1);
       }
@@ -392,11 +392,11 @@ async function main() {
     console.error(
       '[runtime] 内嵌网关监听 :' + GW_PORT + ' 失败：' + (err?.message ?? err) + '\n' +
         '  说明：网关已并入本进程，不能再单独启动 gateway。\n' +
-        '  若端口被旧服务占用：launchctl bootout gui/$(id -u)/com.hotpursuit.hotwave',
+        '  若端口被旧服务占用：launchctl bootout gui/$(id -u)/com.hotwave.runtime',
     );
     process.exit(1);
   }
-  console.log('[runtime] 内嵌网关 ws://127.0.0.1:' + gw.port + '（反连长连接 -> server_app 由它维护）');
+  console.log('[runtime] 内嵌网关 ws://127.0.0.1:' + gw.port + '（反连长连接 -> hotwave_server 由它维护）');
 
   const shutdown = () => {
     try { gw?.close(); } catch { /* ignore */ }

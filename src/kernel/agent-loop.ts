@@ -7,7 +7,7 @@
  *   - 每个工具调用单独一条 { role:'toolResult', toolCallId, toolName, content:[text], isError }
  *   - 工具调用块是 { type:'toolCall', id, name, arguments }
  *
- * 事件模型（供 server_app 映射 SSE）：delta / reasoning / tool_start / tool_end / final / error
+ * 事件模型（供 hotwave_server 映射 SSE）：delta / reasoning / tool_start / tool_end / final / error
  */
 
 import { streamSimple } from '@mariozechner/pi-ai';

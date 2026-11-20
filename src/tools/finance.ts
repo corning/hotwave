@@ -1,7 +1,7 @@
 /**
  * 金融数据工具集
  *
- * 数据统一由 server_app 提供（独立数据端点 /api/hotwave/*），hotwave 不直连外部。
+ * 数据统一由 hotwave_server 提供（独立数据端点 /api/hotwave/*），hotwave 不直连外部。
  * - finance_10jqka_hot: A股/ETF 热股风格排名
  * - finance_eastmoney_hot: 热门股排名（A股热榜/涨幅榜/ETF/港股/美股）
  * - finance_f10_data: 个股 F10 基本面数据（基础信息/指标/板块/风险等）
@@ -11,7 +11,7 @@
  */
 
 import type { Tool } from "./types.js";
-import { fetchServerOne } from "./server-app-data.js";
+import { fetchServerOne } from "./hotwave-server-data.js";
 
 // ============== A股/ETF 热股风格排名 ==============
 
@@ -208,7 +208,7 @@ export const financePankouDataTool: Tool<{
 
 /**
  * 沪深主板异动票池 — 涨幅区间 + 市值筛选。
- * 数据由 server_app 提供（/api/hotwave/market），hotwave 不直连外部。
+ * 数据由 hotwave_server 提供（/api/hotwave/market），hotwave 不直连外部。
  */
 export const financeMarketAnomalyTool: Tool<{
   riseMin?: number;
@@ -244,7 +244,7 @@ export const financeMarketAnomalyTool: Tool<{
 
 /**
  * 沪深主板大单突增 — 票池内股票成交额较上一轮基准增量达阈值的异动提醒。
- * server_app 内存缓存上一轮成交额作为基准，首次调用为建立基准（baseline=true，无告警）。
+ * hotwave_server 内存缓存上一轮成交额作为基准，首次调用为建立基准（baseline=true，无告警）。
  */
 export const financeBigOrderTool: Tool<{
   bigOrderMin?: number;
@@ -280,7 +280,7 @@ export const financeBigOrderTool: Tool<{
 /**
  * 市场综合分析 — 针对指定标的进行全面分析
  *
- * 调 server_app 行情数据，返回综合市场评估结果。
+ * 调 hotwave_server 行情数据，返回综合市场评估结果。
  * 用于 Agent 在收到监控告警后的自主分析。
  */
 export const financeMarketAnalysisTool: Tool<{
@@ -442,7 +442,7 @@ export const financeKlineTool: Tool<{ stock_code: string; days?: number }> = {
   },
   async execute(input, _ctx) {
     const days = input.days ?? 60;
-    // K线原始数据由 server_app 提供（同源前复权），返回 {time,open,close,high,low,volume,amount}；
+    // K线原始数据由 hotwave_server 提供（同源前复权），返回 {time,open,close,high,low,volume,amount}；
     // 技术指标在本地计算。
     const { ok, data, error } = await fetchServerOne("kline", { symbol: input.stock_code, days });
     if (!ok) return `请求失败: ${error}`;

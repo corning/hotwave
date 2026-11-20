@@ -1,9 +1,9 @@
 /**
  * 交易记录落库（TradeStore）
  *
- * 调用 server_app REST API 持久化交易记录，供 Flutter 记录/分析页与
- * admin 监控页查询。用 hotwave 绑定凭证（X-Binding-Id/X-Binding-Secret）鉴权——
- * 该 hotwave 实例绑定哪个用户，交易就归属哪个用户（方案 B）。凭证由用户在 APP/admin
+ * 调用 hotwave_server REST API 持久化交易记录，供 APP 记录/分析页查询。
+ * 用 hotwave 绑定凭证（X-Binding-Id/X-Binding-Secret）鉴权——
+ * 该 hotwave 实例绑定哪个用户，交易就归属哪个用户。凭证由用户在 APP
  * 生成绑定后配置到 hotwave .env 的 TRADE_BINDING_ID / TRADE_BINDING_SECRET。
  *
  * 落库失败不再静默：recordTrade 返回 { ok, row?, error? }，由 TradeRouter 决定
@@ -133,7 +133,7 @@ export async function recordTrade(t: TradeRecordInput): Promise<RecordResult> {
 }
 
 /**
- * 直写 heartbeat 简报到 server_app 独立表（heartbeat_reports）。
+ * 直写 heartbeat 简报到 hotwave_server 独立表（heartbeat_reports）。
  *
  * heartbeat 简报已彻底移出 chat 体系：hotwave 不再 broadcast("chat", _heartbeat_)，
  * message_end 时直接 HTTP 回写本端点落 heartbeat_reports，APP 简报中心查询该表。

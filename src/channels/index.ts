@@ -15,5 +15,5 @@ export const CHANNEL_REGISTRY: Record<string, { id: string; label: string; enabl
   feishu: { id: "feishu", label: "飞书", enabled: false },
   dingtalk: { id: "dingtalk", label: "钉钉", enabled: false },
   wechat: { id: "wechat", label: "微信", enabled: false },
-  hotpursuit: { id: "hotpursuit", label: "热力追踪", enabled: true },
+  hotwave: { id: "hotwave", label: "热浪金融", enabled: true },
 };

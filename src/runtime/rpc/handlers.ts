@@ -9,7 +9,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { AgentLike } from "../contracts.js";
 import type { MiniAgentEvent } from "../events.js";
 import { linkifyStockMentions } from "../../common/stock-linkify.js";
-import { fetchServerOneGet } from "../../tools/server-app-data.js";
+import { fetchServerOneGet } from "../../tools/hotwave-server-data.js";
 import {
   ErrorCodes, errorShape,
   PROTOCOL_VERSION, GATEWAY_METHODS, GATEWAY_EVENTS,
@@ -522,7 +522,7 @@ let cachedStocks: StockEntry[] | null = null;
 let cacheTime = 0;
 const STOCKS_CACHE_TTL = 60_000; // 1 minute
 
-/** 从全市场列表（server_app 提供，数据更新由 server_app 保证）中查找股票中文名称 */
+/** 从全市场列表（hotwave_server 提供，数据更新由 hotwave_server 保证）中查找股票中文名称 */
 async function resolveStockName(symbol: string): Promise<string | undefined> {
   try {
     const stocks = await loadStocks();
@@ -532,7 +532,7 @@ async function resolveStockName(symbol: string): Promise<string | undefined> {
   }
 }
 
-/** 加载全市场列表（server_app /api/hotwave/stocks，权威源） */
+/** 加载全市场列表（hotwave_server /api/hotwave/stocks，权威源） */
 async function loadStocks(): Promise<StockEntry[]> {
   const now = Date.now();
   if (cachedStocks && now - cacheTime < STOCKS_CACHE_TTL) return cachedStocks;
@@ -551,7 +551,7 @@ const handleMonitorSearchStocks: Handler = async (params) => {
   if (!q) return { ok: true, payload: [] };
 
   try {
-    // server_app 侧过滤（避免全量列表每次传输到 hotwave）
+    // hotwave_server 侧过滤（避免全量列表每次传输到 hotwave）
     const { ok, data } = await fetchServerOneGet("stocks/search", { q });
     if (ok && Array.isArray(data)) return { ok: true, payload: data };
     return { ok: true, payload: [] };
@@ -671,7 +671,7 @@ const handleNotificationsDeliver: Handler = async (params, _client, ctx) => {
 /**
  * 直接查询真实股票账户资产（EastMoneyTrader.getBalance）。
  * 用于驾驶舱「真实账户」资产概览：不经 paper 回退，账户未配置/未登录即硬失败，
- * 由调用方（server_app）将错误透传给前端。
+ * 由调用方（hotwave_server）将错误透传给前端。
  */
 const handleTraderBalance: Handler = async () => {
   try {
@@ -701,7 +701,7 @@ const handleTraderBalance: Handler = async () => {
 
 /**
  * 一键清仓真实账户：遍历真实持仓逐只提交卖出委托（EastMoneyTrader 实盘 + 交易时段闸）。
- * 仅供 server_app live 模式调用；paper 模式清仓由 server_app 本地虚拟处理。
+ * 仅供 hotwave_server live 模式调用；paper 模式清仓由 hotwave_server 本地虚拟处理。
  */
 const handleTraderLiquidate: Handler = async () => {
   try {

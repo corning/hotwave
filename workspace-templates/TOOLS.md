@@ -37,8 +37,8 @@ read、write、edit、exec、list、grep。路径限制在工作区内；exec �
 
 ## 数据来源与配置
 
-- 行情端点：server_app /api/hotwave/，由 TRADE_API_BASE 指定。
-- 监控引擎行情：优先 server_app quote，失败回落腾讯 qt.gtimg.cn。
+- 行情端点：hotwave_server /api/hotwave/，由 TRADE_API_BASE 指定。
+- 监控引擎行情：优先 hotwave_server quote，失败回落腾讯 qt.gtimg.cn。
 - 配置文件：~/.hotwave/.env（开发时为仓库根 .env）。
 - 交易模式与风控：TRADE_MODE、LIVE_TRADE_ENABLED、MAX_POSITION_RATIO、MAX_ORDER_AMOUNT。
 
