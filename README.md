@@ -321,8 +321,6 @@ hotwave start
 
 **hotwave start** 运行的是 **dist** 构建产物；源码改动后需要重新 **pnpm build**。
 
-维护者的 npm 发布流程见 [PUBLISHING.md](PUBLISHING.md)。
-
 ### 6.6 首次启动做了什么
 
 **ensureHotwaveHome** 是幂等初始化，顺序如下：
@@ -921,8 +919,6 @@ pnpm test:integration # 全功能自测
 - **替换数据源**：实现与 **fetchServerOne** 相同的接口，替换 MarketData 的 fetcher。
 
 技术栈：TypeScript、ESM、NodeNext、strict 模式；构建产物输出到 **dist/**。
-
-npm 发布流程、版本管理与回滚方式见 [PUBLISHING.md](PUBLISHING.md)。
 
 ---
 
