@@ -152,7 +152,56 @@ npm publish --provenance --access public --registry=https://registry.npmjs.org
 
 **--provenance** 需要 id-token 权限与 npm 可信发布配置；没有配置时去掉该参数。
 
-## 10. 常见错误
+## 10. 发布被 403：需要 2FA
+
+如果发布返回：
+
+~~~text
+403 Forbidden - PUT https://registry.npmjs.org/<package>
+Two-factor authentication or granular access token with bypass 2fa enabled is required to publish packages.
+~~~
+
+说明 npm 要求发布者具备 2FA，或使用允许绕过 2FA 的 granular token。先确认账号状态：
+
+~~~bash
+npm profile get --registry=https://registry.npmjs.org | grep -i two-factor
+~~~
+
+如果显示 **two-factor auth: disabled**，说明账号尚未开启 2FA，直接加 **--otp** 没有验证码可输。
+
+### 方案 A：开启 2FA 后用 OTP 发布
+
+1. 浏览器登录 npmjs.com，进入 Account Settings → Two-Factor Authentication。
+2. 使用验证器 App 完成绑定，保存恢复码。
+3. 选择对写入操作启用 2FA（auth-and-writes）。
+4. 重新发布，并提供当前 6 位验证码：
+
+~~~bash
+npm publish --registry=https://registry.npmjs.org --otp=123456
+~~~
+
+OTP 每 30 秒失效。如果构建耗时导致验证码过期，重新生成后再执行。npm 也可能在发布过程中交互式提示输入 OTP。
+
+### 方案 B：使用 Granular Access Token
+
+1. npmjs.com → Access Tokens → Generate New Token → **Granular Access Token**。
+2. 权限选择 Read and write。
+3. Packages 选择 All packages（包尚未发布时通常只能全选）。
+4. 勾选 **Bypass 2FA**（若页面要求先开启 2FA，则先执行方案 A）。
+5. 生成后立即复制 token，页面关闭后无法再次查看。
+6. 在本机临时配置 token 并发布：
+
+~~~bash
+export NODE_AUTH_TOKEN=npm_xxx
+npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+npm publish --registry=https://registry.npmjs.org
+~~~
+
+不要把 token 写入仓库。仓库已忽略 **.npmrc** 与 ***.tgz**。
+
+> 注意：错误信息要求的是 **granular access token**，不是旧的 classic automation token。
+
+## 11. 常见错误
 
 | 错误 | 原因 | 处理 |
 |------|------|------|
@@ -160,6 +209,7 @@ npm publish --provenance --access public --registry=https://registry.npmjs.org
 | E404 发布失败 | 发布命令指向了只读镜像 | 显式加 --registry=https://registry.npmjs.org |
 | E403 名称被占用 | 包名已被他人注册 | 改用 scope 包名，或联系 npm 支持 |
 | EOTP | 账号开启 2FA | 追加 --otp=验证码 |
+| E403 需要 2FA | 账号未开启发布 2FA，或需要 granular token | 按第 10 节开启 2FA 或使用 Bypass 2FA token |
 | EPUBLISHCONFLICT | 该版本已存在 | 提升 version 后重新发布 |
 | 安装后找不到 hotwave | 全局 bin 目录不在 PATH | 检查 npm prefix -g 与 PATH |
 | 安装后缺少 dist | 发布时未编译 | 确认 prepublishOnly 执行成功，或先 npm run build |
