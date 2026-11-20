@@ -38,7 +38,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "pnpm build && rm -rf src/trader/captcha/__pycache__",
+    "prepublishOnly": "npm run build && rm -rf src/trader/captcha/__pycache__",
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/dev.mjs start",
     "channel:start": "tsx src/channels/channel-cli.ts",
